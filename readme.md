@@ -67,9 +67,15 @@ The bot will connect to Twitch EventSub WS, subscribe to chat messages, and begi
 - `!prize <username> <n>` → Gives someone else multiple prizes.
 
 ## File Overview
-- `eventsub_sendchat_ws.py` — Main bot implementation.
-- `device_oauth.py` — Device flow helper to generate/refresh tokens.
+- `bot.py` — Main bot implementation.
+- `auth_helper.py` — Device flow helper to generate/refresh tokens.
 - `prize_words.json` — Wordlist for prize generation.
+
+## Todo
+- Wrap entire OAuth life-cycle into the bot.
+- Figure out something for the bot to.. you know... do.
+- ?
+- Profit?
 
 ## Notes
 - **Rate limits**: The bot includes a simple pacing mechanism, but Twitch API rate limits still apply.
