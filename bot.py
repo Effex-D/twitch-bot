@@ -57,6 +57,27 @@ def cfg_from_env() -> Config:
         raise SystemExit("Missing env: TWITCH_CLIENT_ID, BOT_USER_ACCESS_TOKEN, BOT_LOGIN, BROADCASTER_LOGINS")
     return Config(cid, tok, bot_login, broadcaster_logins)
 
+# --- Local Lights API (passthrough) ---
+
+LIGHTS_API_BASE = os.getenv("LIGHTS_API_BASE", "http://localhost:5000").rstrip("/")
+
+def set_lights_passthrough(raw_value: str, timeout: float = 3.0) -> tuple[bool, str]:
+    """
+    Pass the colour value straight through to the internal lights API.
+    No preprocessing here; the server handles names/hex/stripping/casing.
+    We send both keys so the server can accept either schema.
+    Returns (ok, message).
+    """
+    url = f"{LIGHTS_API_BASE}/set_colour"
+    try:
+        payload = {"colour": raw_value, "color": raw_value}
+        r = requests.post(url, json=payload, timeout=timeout)
+        if r.status_code >= 400:
+            return False, f"HTTP {r.status_code}: {r.text[:120]}"
+        return True, "ok"
+    except requests.RequestException as e:
+        return False, str(e)
+
 
 # --- Helix helpers ---
 
@@ -228,6 +249,17 @@ class EventSubBot:
             await self._reply("Hey there! o/", reply_to, broadcaster_id)
         elif lower.startswith("!echo "):
             await self._reply(t[6:], reply_to, broadcaster_id)
+        elif lower.startswith("!lights"):
+            arg = t[len("!lights"):].strip()
+            if not arg:
+                await self._reply("Usage: !lights <colour name or #hex>", reply_to, broadcaster_id)
+            else:
+                ok, msg = set_lights_passthrough(arg)
+                if ok:
+                    await self._reply(f"Lights set to {arg}", reply_to, broadcaster_id)
+                else:
+                    await self._reply(f"Lights error: {msg}", reply_to, broadcaster_id)
+
         elif lower == "!help":
             await self._reply("Commands: !hello, !echo <text>, !prize", reply_to, broadcaster_id)
         elif lower.startswith("!prize"):
