@@ -149,6 +149,7 @@ class EventSubBot:
         self.id_to_login: Dict[str, str] = {}
         self._last_send = 0.0
         self._send_interval = 1.2
+        self._last_lights = 0.0  # global cooldown marker for !lights
 
     async def run(self):
         self.bot_user_id = get_user_id(self.cfg, self.cfg.bot_login)
@@ -250,15 +251,29 @@ class EventSubBot:
         elif lower.startswith("!echo "):
             await self._reply(t[6:], reply_to, broadcaster_id)
         elif lower.startswith("!lights"):
+            # Usage: !lights rebecca purple  |  !lights #0af  |  !lights #112233
             arg = t[len("!lights"):].strip()
             if not arg:
                 await self._reply("Usage: !lights <colour name or #hex>", reply_to, broadcaster_id)
             else:
-                ok, msg = set_lights_passthrough(arg)
-                if ok:
-                    await self._reply(f"Lights set to {arg}", reply_to, broadcaster_id)
+                cooldown = 300.0  # 5 minutes
+                now = time.time()
+                remaining = cooldown - (now - self._last_lights)
+                if remaining > 0:
+                    mins = int(remaining // 60)
+                    secs = int(remaining % 60)
+                    await self._reply(
+                        f"Lights cooldown: try again in {mins}m {secs}s",
+                        reply_to,
+                        broadcaster_id,
+                    )
                 else:
-                    await self._reply(f"Lights error: {msg}", reply_to, broadcaster_id)
+                    ok, msg = set_lights_passthrough(arg)
+                    if ok:
+                        self._last_lights = now
+                        await self._reply(f"Lights set to {arg}", reply_to, broadcaster_id)
+                    else:
+                        await self._reply(f"Lights error: {msg}", reply_to, broadcaster_id)
 
         elif lower == "!help":
             await self._reply("Commands: !hello, !echo <text>, !prize", reply_to, broadcaster_id)
